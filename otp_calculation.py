@@ -1,7 +1,25 @@
 import pandas as pd
 import numpy as np
+import os
 
-df = pd.read_csv("otp_project/input/otp_pandas_try.csv",sep=";", dtype={14: str, 17: str, 20: str, 26: str})
+# 1. Get the folder where otp_calculation.py is actually located
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 2. Build the path to the CSV file correctly
+file_path = os.path.join(script_dir, "input", "otp_pandas_try.csv")
+file_path2 = os.path.join(script_dir, "input", "delco_data_try.csv")
+file_path3 = os.path.join(script_dir, "input", "station_db.csv")
+output_folder = os.path.join(script_dir, "output")
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+
+# 3. Now read it
+df = pd.read_csv(file_path, sep=";", dtype={14: str, 17: str, 20: str, 26: str, 13: str, 25: str})
+
+# 2. Check if it exists, if not, create it!
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+    print(f"Created missing directory: {output_folder}")
 
 df["DATE"] = pd.to_datetime(df["DATE"], format="%d/%m/%Y", errors="coerce")
 df["MONTH_NUMBER"] = df["DATE"].dt.month
@@ -88,8 +106,8 @@ df["DlyCodeAsgn"] = np.where((df["FVal"] == "val") & (df["DelVal"] == "late") & 
                             np.where((df["FVal"] == "val") & (df["DelVal"] == "late") & (DlyMax == df["DLY1"]) & (DlyMax == df["DLY2"]) & (DlyMax == df["DLY3"]) & (DlyMax == df["DLY4"]), df["C1"], 
                             np.where((df["FVal"] == "val") & (df["DelVal"] == "on_time"), 3, 0))))))))
 
-dc = pd.read_csv("otp_project/input/delco_data_try.csv", sep=";")
-st = pd.read_csv("otp_project/input/station_db.csv", sep=";")
+dc = pd.read_csv(file_path2, sep=";")
+st = pd.read_csv(file_path3, sep=";")
 
 df["DlyCodeAsgn"] = df["DlyCodeAsgn"].astype(str)
 df["C1"] = df["C1"].astype(str)
@@ -288,6 +306,13 @@ delCatNum3 = df2.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME","CLASS","ICAO","sta
     delRange0400 = ("DelRange", lambda x: (x == "> 04:00").sum())
 ).reset_index()
 
+delCatNum3["1630perc"] = round((delCatNum3["delRange1630"] / delCatNum3["fltTotal"]) * 100, 2)
+delCatNum3["3159perc"] = round((delCatNum3["delRange3159"] / delCatNum3["fltTotal"]) * 100, 2)
+delCatNum3["0100perc"] = round((delCatNum3["delRange0100"] / delCatNum3["fltTotal"]) * 100, 2)
+delCatNum3["0200perc"] = round((delCatNum3["delRange0200"] / delCatNum3["fltTotal"]) * 100, 2)
+delCatNum3["0400perc"] = round((delCatNum3["delRange0400"] / delCatNum3["fltTotal"]) * 100, 2)
+delCatNum3["otp"] = round(100 - delCatNum3["1630perc"] - delCatNum3["3159perc"] - delCatNum3 ["0100perc"] - delCatNum3["0200perc"] - delCatNum3["0400perc"], 2)
+
 delCatNum4 = df2.groupby(["DATE","CLASS","ICAO","station_town"]).agg(
     fltTotal = ("FVal", lambda x: (x == "val").sum()),
     delRange1630 = ("DelRange", lambda x: (x == "00:16 - 00:30").sum()),
@@ -336,12 +361,52 @@ delCatNum6["delRange0200Perc"] = round((delCatNum6["delRange0200"] / delCatNum6[
 delCatNum6["delRange0400Perc"] = round((delCatNum6["delRange0400"] / delCatNum6["fltTotal"]) * 100, 2)
 delCatNum6["otp"] = round(100 - (delCatNum6["delRange1630Perc"] + delCatNum6["delRange3159Perc"] + delCatNum6["delRange0100Perc"] + delCatNum6["delRange0200Perc"] + delCatNum6["delRange0400Perc"]), 2)
 
-otpPerDate.to_csv("otp_project/output/otp_per_date_output.csv", sep=";", index=False)
-delCatNum.to_csv("otp_project/output/delay_category_output.csv", sep=";", index=False)
-otpPerMonth.to_csv("otp_project/output/otp_per_month_output.csv", sep=";", index=False)
-delCatNum2.to_csv("otp_project/output/delay_category_per_month_output.csv", sep=";", index=False)
-delCatNum3.to_csv("otp_project/output/otp_per_station_per_month.csv",sep=";", index=False)
-delCatNum4.to_csv("otp_project/output/otp_per_station_per_date.csv",sep=";", index=False)
-delCatNum5.to_csv("otp_project/output/otp_per_station_class_per_month.csv",sep=";", index=False)
-delCatNum6.to_csv("otp_project/output/otp_per_station_class_per_date.csv",sep=";", index=False)
-df2.to_csv("otp_project/output/dfs_details.csv", sep= ";", index=False)
+delCatNum7 = df2.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME","Main_Cat1"]).agg(
+    delRange1630 = ("DelRange", lambda x: (x == "00:16 - 00:30").sum()),
+    delRange3159 = ("DelRange", lambda x: (x == "00:31 - 00:59").sum()),
+    delRange0100 = ("DelRange", lambda x: (x == "01:00 - 01:59").sum()),
+    delRange0200 = ("DelRange", lambda x: (x == "02:00 - 03:59").sum()),
+    delRange0400 = ("DelRange", lambda x: (x == "> 04:00").sum())
+).reset_index()
+
+delCatNum8 = df2.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME"]).agg(
+    fltTotal = ("FVal", lambda x: (x == "val").sum())
+).reset_index()
+
+delCatNum9 = pd.merge(delCatNum7, delCatNum8, how="left", on=["YEAR","MONTH_NUMBER","MONTH_NAME"])
+
+delCatNum9["delRange1630Perc"] = round((delCatNum9["delRange1630"] / delCatNum9["fltTotal"]) * 100, 2)
+delCatNum9["delRange3159Perc"] = round((delCatNum9["delRange3159"] / delCatNum9["fltTotal"]) * 100, 2)
+delCatNum9["delRange0100Perc"] = round((delCatNum9["delRange0100"] / delCatNum9["fltTotal"]) * 100, 2)
+delCatNum9["delRange0200Perc"] = round((delCatNum9["delRange0200"] / delCatNum9["fltTotal"]) * 100, 2)
+delCatNum9["delRange0400Perc"] = round((delCatNum9["delRange0400"] / delCatNum9["fltTotal"]) * 100, 2)
+
+save_path = os.path.join(output_folder, "otp_per_date_output.csv")
+otpPerDate.to_csv(save_path, sep=";", index=False)
+
+save_path2 = os.path.join(output_folder, "delay_category_output.csv")
+delCatNum.to_csv(save_path2, sep=";", index=False)
+
+save_path3 = os.path.join(output_folder, "otp_per_month_output.csv")
+otpPerMonth.to_csv(save_path3, sep=";", index=False)
+
+save_path4 = os.path.join(output_folder, "delay_category_per_month_output.csv")
+delCatNum2.to_csv(save_path4, sep=";", index=False)
+
+save_path5 = os.path.join(output_folder, "otp_per_station_per_month.csv")
+delCatNum3.to_csv(save_path5, sep=";", index=False)
+
+save_path6 = os.path.join(output_folder, "otp_per_station_per_date.csv")
+delCatNum4.to_csv(save_path6, sep=";", index=False)
+
+save_path7 = os.path.join(output_folder, "otp_per_station_class_per_month.csv")
+delCatNum5.to_csv(save_path7, sep=";", index=False)
+
+save_path8 = os.path.join(output_folder, "otp_per_station_class_per_date.csv")
+delCatNum6.to_csv(save_path8, sep=";", index=False)
+
+save_path9 = os.path.join(output_folder, "dfs_details.csv")
+df2.to_csv(save_path9, sep=";", index=False)
+
+save_path10 = os.path.join(output_folder, "delay_per_cat_per_time.csv")
+delCatNum9.to_csv(save_path10, sep=";", index=False)

@@ -39,7 +39,11 @@ df["C4"] = df["C4"].fillna("0")
 df["C4"] = df["C4"].astype(str)
 df["C4"] = df["C4"].str.split(".").str[0]
 df["C1Arr"] = df["C1Arr"].fillna("0")
+df["C1Arr"] = df["C1Arr"].astype(str)
+df["C1Arr"] = df["C1Arr"].str.split(".").str[0]
 df["C2Arr"] = df["C2Arr"].fillna("0")
+df["C2Arr"] = df["C2Arr"].astype(str)
+df["C2Arr"] = df["C2Arr"].str.split(".").str[0]
 df["DLY1"] = df["DLY1"].fillna("00:00:00")
 df["DLY1"] = pd.to_timedelta(df["DLY1"].astype(str) + ":00",errors="coerce")
 df["DLY1"] = df["DLY1"].fillna(pd.Timedelta(seconds=0))
@@ -78,11 +82,17 @@ df["C3"] = np.where(df["Sub3"] != "0", df["C3"] + df["Sub3"], df["C3"])
 df["C3"] = df["C3"].astype(str)
 df["C4"] = np.where(df["Sub4"] != "0", df["C4"] + df["Sub4"], df["C4"])
 df["C4"] = df["C4"].astype(str)
+df["C1Arr"] = np.where(df["Sub1Arr"] != "0", df["C1Arr"] + df["Sub1Arr"], df["C1Arr"])
+df["C1Arr"] = df["C1Arr"].astype(str)
+df["C2Arr"] = np.where(df["Sub2Arr"] != "0", df["C2Arr"] + df["Sub2Arr"], df["C2Arr"])
+df["C2Arr"] = df["C2Arr"].astype(str)
 
 FValCond = ((df["TYPE"] == "J") | (df["TYPE"] == "G")) & (df["ST"] == "0")
 df["FVal"] = np.where(FValCond, "val", "not_count")
 
 df["stationVal"] = np.where(df["FVal"] == "val", df["DEP"], "0")
+
+df["stationValArr"] = np.where(df["FVal"] == "val", df["ARR"], "0")
 
 df["DelTotDep"] = np.where((df["FVal"] == "val") & ((df["DLY1"] + df["DLY2"] + df["DLY3"] + df["DLY4"]) > 15), df["DLY1"] + df["DLY2"] + df["DLY3"] + df["DLY4"], 0)
 Dly = df["DelTotDep"] > 15
@@ -106,15 +116,37 @@ df["DlyCodeAsgn"] = np.where((df["FVal"] == "val") & (df["DelVal"] == "late") & 
                             np.where((df["FVal"] == "val") & (df["DelVal"] == "late") & (DlyMax == df["DLY1"]) & (DlyMax == df["DLY2"]) & (DlyMax == df["DLY3"]) & (DlyMax == df["DLY4"]), df["C1"], 
                             np.where((df["FVal"] == "val") & (df["DelVal"] == "on_time"), 3, 0))))))))
 
+df["DelTotArr"] = np.where((df["FVal"] == "val") & ((df["DLY1Arr"] + df["DLY2Arr"]) > 15), df["DLY1Arr"] + df["DLY2Arr"], 0)
+DlyArr = df["DelTotArr"] > 15
+onTimeArr = df["DelTotArr"] <= 15
+df["DelValArr"] = np.where((df["FVal"] == "val") & DlyArr, "late",
+                        np.where((df["FVal"] == "val") & onTimeArr, "on_time", "0"))
+
+df["DelRangeArr"] = np.where(((df["DelTotArr"] > 15) & (df["DelTotArr"] <= 30)) & (df["FVal"] == "val") & (df["DelValArr"] == "late"), "00:16 - 00:30", 
+                        np.where(((df["DelTotArr"] > 30) & (df["DelTotArr"] < 60)) & (df["FVal"] == "val") & (df["DelValArr"] == "late"), "00:31 - 00:59",
+                        np.where(((df["DelTotArr"] >= 60) & (df["DelTotArr"] < 120)) & (df["FVal"] == "val") & (df["DelValArr"] == "late"), "01:00 - 01:59",
+                        np.where(((df["DelTotArr"] >= 120) & (df["DelTotArr"] < 240)) & (df["FVal"] == "val") & (df["DelValArr"] == "late"), "02:00 - 03:59",
+                        np.where((df["DelTotArr"] > 240) & (df["FVal"] == "val") & (df["DelValArr"] == "late"), "> 04:00","0")))))
+
+DlyMaxArr = df[["DLY1Arr", "DLY2Arr"]].max(axis=1)
+df["DlyCodeAsgnArr"] = np.where((df["FVal"] == "val") & (df["DelValArr"] == "late") & (DlyMaxArr == df["DLY1Arr"]), df["C1Arr"],
+                            np.where((df["FVal"] == "val") & (df["DelValArr"] == "late") & (DlyMaxArr == df["DLY2Arr"]), df["C2Arr"],
+                            np.where((df["FVal"] == "val") & (df["DelValArr"] == "late") & (DlyMaxArr == df["DLY1Arr"]) & (DlyMaxArr == df["DLY2Arr"]), df["C1Arr"], 
+                            np.where((df["FVal"] == "val") & (df["DelValArr"] == "on_time"), 3, 0))))
+
 dc = pd.read_csv(file_path2, sep=";")
 st = pd.read_csv(file_path3, sep=";")
 
 df["DlyCodeAsgn"] = df["DlyCodeAsgn"].astype(str)
+df["DlyCodeAsgnArr"] = df["DlyCodeAsgnArr"].astype(str)
 df["C1"] = df["C1"].astype(str)
 df["C2"] = df["C2"].astype(str)
 df["C3"] = df["C3"].astype(str)
 df["C4"] = df["C4"].astype(str)
+df["C1Arr"] = df["C1Arr"].astype(str)
+df["C2Arr"] = df["C2Arr"].astype(str)
 df["stationVal"] = df["stationVal"].astype(str)
+df["stationValArr"] = df["stationValArr"].astype(str)
 
 dc_small = dc[["DlyCodeAsgn", "DlyCat", "DlyCat2"]].astype(str)
 st_small = st[["STATION","ICAO","CLASS","TOWN"]].astype(str)
@@ -142,8 +174,23 @@ df2 = df2.rename(columns={
     "StationCode2": "StationClass"
 })
 
+df2 = pd.merge(df2, dc_small, how="left", left_on="DlyCodeAsgnArr", right_on="DlyCodeAsgn", suffixes=("", "_mainArr")).drop(columns="DlyCodeAsgn_mainArr", errors='ignore')
+df2 = pd.merge(df2, st_small, how="left", left_on="stationValArr", right_on="STATION", suffixes=("","_stnArr")).drop(columns="stn_mainArr", errors='ignore')
+df2 = pd.merge(df2, dc_small, how="left", left_on="C1Arr", right_on="DlyCodeAsgn", suffixes=("", "_c1Arr")).drop(columns="DlyCodeAsgn_c1Arr", errors='ignore')
+df2 = pd.merge(df2, dc_small, how="left", left_on="C2Arr", right_on="DlyCodeAsgn", suffixes=("", "_c2Arr")).drop(columns="DlyCodeAsgn_c2Arr", errors='ignore')
+
+df2 = df2.rename(columns={
+    "DlyCat": "Main_CatArr1",
+    "DlyCat2": "Main_CatArr2",   
+    "DlyCat_c1Arr": "C1Arr_Cat1",   
+    "DlyCat2_c1Arr": "C1Arr_Cat2",   
+    "DlyCat_c2Arr": "C2Arr_Cat1",   
+    "DlyCat2_c2Arr": "C2Arr_Cat2"
+})
+
 flt_valid = df2["FVal"] == "val"
 dly_valid = df2["DelVal"] == "late"
+dlyArr_valid = df2["DelValArr"] == "late"
 
 stnHndl1 = np.where(flt_valid & dly_valid & (df2["C1_Cat1"] == "STATION HANDLING"), df2["DLY1"], 0)
 stnHndl2 = np.where(flt_valid & dly_valid & (df2["C2_Cat1"] == "STATION HANDLING"), df2["DLY2"], 0)
@@ -205,7 +252,48 @@ uncontrol3 = np.where(flt_valid & dly_valid & (df2["C3_Cat2"] == "UNCONTROLLABLE
 uncontrol4 = np.where(flt_valid & dly_valid & (df2["C4_Cat2"] == "UNCONTROLLABLE"), df2["DLY4"], 0)
 df2["UncontrolDelay"] = uncontrol1 + uncontrol2 + uncontrol3 + uncontrol4
 
+stnHndlArr1 = np.where(flt_valid & dlyArr_valid & (df2["C1Arr_Cat1"] == "STATION HANDLING"), df2["DLY1Arr"], 0)
+stnHndlArr2 = np.where(flt_valid & dlyArr_valid & (df2["C2Arr_Cat1"] == "STATION HANDLING"), df2["DLY2Arr"], 0)
+df2["StnHndlDelayArr"] = stnHndlArr1 + stnHndlArr2
+
+damAcArr1 = np.where(flt_valid & dlyArr_valid & (df2["C1Arr_Cat1"] == "DAMAGE TO AIRCRAFT"), df2["DLY1Arr"], 0)
+damAcArr2 = np.where(flt_valid & dlyArr_valid & (df2["C2Arr_Cat1"] == "DAMAGE TO AIRCRAFT"), df2["DLY2Arr"], 0)
+df2["damAcArr"] = damAcArr1 + damAcArr2
+
+techArr1 = np.where(flt_valid & dlyArr_valid & (df2["C1Arr_Cat1"] == "TECHNICAL"), df2["DLY1Arr"], 0)
+techArr2 = np.where(flt_valid & dlyArr_valid & (df2["C2Arr_Cat1"] == "TECHNICAL"), df2["DLY2Arr"], 0)
+df2["techArr"] = techArr1 + techArr2
+
+systArr1 = np.where(flt_valid & dlyArr_valid & (df2["C1Arr_Cat1"] == "SYSTEM"), df2["DLY1Arr"], 0)
+systArr2 = np.where(flt_valid & dlyArr_valid & (df2["C2Arr_Cat1"] == "SYSTEM"), df2["DLY2Arr"], 0)
+df2["systArr"] = systArr1 + systArr2
+
+flopsArr1 = np.where(flt_valid & dlyArr_valid & (df2["C1Arr_Cat1"] == "FLIGHT OPERATIONS & CREW"), df2["DLY1Arr"], 0)
+flopsArr2 = np.where(flt_valid & dlyArr_valid & (df2["C2Arr_Cat1"] == "FLIGHT OPERATIONS & CREW"), df2["DLY2Arr"], 0)
+df2["flopsArr"] = flopsArr1 + flopsArr2
+
+weatherArr1 = np.where(flt_valid & dlyArr_valid & (df2["C1Arr_Cat1"] == "WEATHER"), df2["DLY1Arr"], 0)
+weatherArr2 = np.where(flt_valid & dlyArr_valid & (df2["C2Arr_Cat1"] == "WEATHER"), df2["DLY2Arr"], 0)
+df2["weatherArr"] = weatherArr1 + weatherArr2
+
+airportArr1 = np.where(flt_valid & dlyArr_valid & (df2["C1Arr_Cat1"] == "AIRPORT FACILITIES"), df2["DLY1Arr"], 0)
+airportArr2 = np.where(flt_valid & dlyArr_valid & (df2["C2Arr_Cat1"] == "AIRPORT FACILITIES"), df2["DLY2Arr"], 0)
+df2["airportArr"] = airportArr1 + airportArr2
+
+miscArr1 = np.where(flt_valid & dlyArr_valid & (df2["C1Arr_Cat1"] == "MISCELLANEOUS"), df2["DLY1Arr"], 0)
+miscArr2 = np.where(flt_valid & dlyArr_valid & (df2["C2Arr_Cat1"] == "MISCELLANEOUS"), df2["DLY2Arr"], 0)
+df2["miscArr"] = miscArr1 + miscArr2
+
+controlArr1 = np.where(flt_valid & dlyArr_valid & (df2["C1Arr_Cat2"] == "CONTROLLABLE"), df2["DLY1Arr"], 0)
+controlArr2 = np.where(flt_valid & dlyArr_valid & (df2["C2Arr_Cat2"] == "CONTROLLABLE"), df2["DLY2Arr"], 0)
+df2["controlArr"] = controlArr1 + controlArr2
+
+uncontrolArr1 = np.where(flt_valid & dlyArr_valid & (df2["C1Arr_Cat2"] == "UNCONTROLLABLE"), df2["DLY1Arr"], 0)
+uncontrolArr2 = np.where(flt_valid & dlyArr_valid & (df2["C2Arr_Cat2"] == "UNCONTROLLABLE"), df2["DLY2Arr"], 0)
+df2["uncontrolArr"] = uncontrolArr1 + uncontrolArr2
+
 df2["station_town"] = np.where(flt_valid, df2["STATION"] + " - " + df2["TOWN"],0)
+df2["station_townArr"] = np.where(flt_valid, df2["STATION_stnArr"] + " - " + df2["TOWN_stnArr"],0)
 
 otpPerDate = df.groupby(["DATE"]).agg(
     flightPerDate = ("FVal", lambda x: (x == "val").sum()),
@@ -215,6 +303,14 @@ otpPerDate = df.groupby(["DATE"]).agg(
 
 otpPerDate["OTP_Percentage"] = round((otpPerDate["onTimePerDate"] / otpPerDate["flightPerDate"]) * 100 ,2)
 
+otpArrPerDate = df.groupby(["DATE"]).agg(
+    flightPerDate = ("FVal", lambda x: (x == "val").sum()),
+    onTimePerDate = ("DelValArr", lambda x: (x == "on_time").sum()),
+    latePerDate = ("DelValArr", lambda x: (x == "late").sum())
+).reset_index()
+
+otpArrPerDate["OTP_PercentageArr"] = round((otpArrPerDate["onTimePerDate"] / otpArrPerDate["flightPerDate"]) * 100 ,2)
+
 otpPerMonth = df.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME"]).agg(
     flightPerMonth = ("FVal", lambda x: (x == "val").sum()),
     onTimePerMonth = ("DelVal", lambda x: (x == "on_time").sum()),
@@ -222,6 +318,14 @@ otpPerMonth = df.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME"]).agg(
 ).reset_index()
 
 otpPerMonth["OTP_Percentage"] = round((otpPerMonth["onTimePerMonth"] / otpPerMonth["flightPerMonth"]) * 100 ,2)
+
+otpArrPerMonth = df.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME"]).agg(
+    flightPerMonth = ("FVal", lambda x: (x == "val").sum()),
+    onTimePerMonth = ("DelValArr", lambda x: (x == "on_time").sum()),
+    latePerMonth = ("DelValArr", lambda x: (x == "late").sum())
+).reset_index()
+
+otpArrPerMonth["OTP_Percentage"] = round((otpArrPerMonth["onTimePerMonth"] / otpArrPerMonth["flightPerMonth"]) * 100 ,2)
 
 delCatNum = df2.groupby("DATE").agg(
     stnhndlCount = ("Main_Cat1", lambda x: (x == "STATION HANDLING").sum()),
@@ -381,6 +485,112 @@ delCatNum9["delRange0100Perc"] = round((delCatNum9["delRange0100"] / delCatNum9[
 delCatNum9["delRange0200Perc"] = round((delCatNum9["delRange0200"] / delCatNum9["fltTotal"]) * 100, 2)
 delCatNum9["delRange0400Perc"] = round((delCatNum9["delRange0400"] / delCatNum9["fltTotal"]) * 100, 2)
 
+delCatNum10 = df2.groupby("DATE").agg(
+    stnhndlCount = ("Main_CatArr1", lambda x: (x == "STATION HANDLING").sum()),
+    damAcCount = ("Main_CatArr1", lambda x: (x == "DAMAGE TO AIRCRAFT").sum()),
+    techCount = ("Main_CatArr1", lambda x: (x == "TECHNICAL").sum()),
+    systCount = ("Main_CatArr1", lambda x: (x == "SYSTEM").sum()),
+    flopsCount = ("Main_CatArr1", lambda x: (x == "FLIGHT OPERATIONS & CREW").sum()),
+    weatherCount = ("Main_CatArr1", lambda x: (x == "WEATHER").sum()),
+    airportCount = ("Main_CatArr1", lambda x: (x == "AIRPORT FACILITIES").sum()),
+    miscCount = ("Main_CatArr1", lambda x: (x == "MISCELLANEOUS").sum()),
+    controlCount = ("Main_CatArr2", lambda x: (x == "CONTROLLABLE").sum()),
+    uncontrolCount = ("Main_CatArr2", lambda x: (x == "UNCONTROLLABLE").sum()),
+    fltTotal = ("FVal", lambda x: (x == "val").sum()),
+    delayedFlights = ("DelValArr", lambda x: (x == "late").sum()),   
+    delayTotal = ("DelTotArr", "sum"),
+    stnHndlTotal = ("StnHndlDelayArr", "sum"),
+    damAcTotal = ("damAcArr", "sum"),
+    techTotal = ("techArr", "sum"),
+    systTotal = ("systArr", "sum"),
+    flopsTotal = ("flopsArr", "sum"),
+    weatherTotal = ("weatherArr", "sum"),
+    airportTotal = ("airportArr", "sum"),
+    miscTotal = ("miscArr", "sum"),
+    ctrlTotal = ("controlArr", "sum"),
+    unctrlTotal = ("uncontrolArr", "sum")
+).reset_index()
+
+delCatNum10["stnHandlPerc"] = round((delCatNum10["stnHndlTotal"] / delCatNum10["delayTotal"]) * (delCatNum10["delayedFlights"] / delCatNum10["fltTotal"]) * 100, 2)
+delCatNum10["damAcPerc"] = round((delCatNum10["damAcTotal"] / delCatNum10["delayTotal"]) * (delCatNum10["delayedFlights"] / delCatNum10["fltTotal"]) * 100, 2)
+delCatNum10["techPerc"] = round((delCatNum10["techTotal"] / delCatNum10["delayTotal"]) * (delCatNum10["delayedFlights"] / delCatNum10["fltTotal"]) * 100, 2)
+delCatNum10["systPerc"] = round((delCatNum10["systTotal"] / delCatNum10["delayTotal"]) * (delCatNum10["delayedFlights"] / delCatNum10["fltTotal"]) * 100, 2)
+delCatNum10["flopsPerc"] = round((delCatNum10["flopsTotal"] / delCatNum10["delayTotal"]) * (delCatNum10["delayedFlights"] / delCatNum10["fltTotal"]) * 100, 2)
+delCatNum10["weatherPerc"] = round((delCatNum10["weatherTotal"] / delCatNum10["delayTotal"]) * (delCatNum10["delayedFlights"] / delCatNum10["fltTotal"]) * 100, 2)
+delCatNum10["airportPerc"] = round((delCatNum10["airportTotal"] / delCatNum10["delayTotal"]) * (delCatNum10["delayedFlights"] / delCatNum10["fltTotal"]) * 100, 2)
+delCatNum10["miscPerc"] = round((delCatNum10["miscTotal"] / delCatNum10["delayTotal"]) * (delCatNum10["delayedFlights"] / delCatNum10["fltTotal"]) * 100, 2)
+delCatNum10["ctrlPerc"] = round((delCatNum10["ctrlTotal"] / delCatNum10["delayTotal"]) * (delCatNum10["delayedFlights"] / delCatNum10["fltTotal"]) * 100, 2)
+delCatNum10["unctrlPerc"] = round((delCatNum10["unctrlTotal"] / delCatNum10["delayTotal"]) * (delCatNum10["delayedFlights"] / delCatNum10["fltTotal"]) * 100, 2)
+
+delCatNum11 = df2.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME"]).agg(
+    stnhndlCount = ("Main_CatArr1", lambda x: (x == "STATION HANDLING").sum()),
+    damAcCount = ("Main_CatArr1", lambda x: (x == "DAMAGE TO AIRCRAFT").sum()),
+    techCount = ("Main_CatArr1", lambda x: (x == "TECHNICAL").sum()),
+    systCount = ("Main_CatArr1", lambda x: (x == "SYSTEM").sum()),
+    flopsCount = ("Main_CatArr1", lambda x: (x == "FLIGHT OPERATIONS & CREW").sum()),
+    weatherCount = ("Main_CatArr1", lambda x: (x == "WEATHER").sum()),
+    airportCount = ("Main_CatArr1", lambda x: (x == "AIRPORT FACILITIES").sum()),
+    miscCount = ("Main_CatArr1", lambda x: (x == "MISCELLANEOUS").sum()),
+    controlCount = ("Main_CatArr2", lambda x: (x == "CONTROLLABLE").sum()),
+    uncontrolCount = ("Main_CatArr2", lambda x: (x == "UNCONTROLLABLE").sum()),
+    fltTotal = ("FVal", lambda x: (x == "val").sum()),
+    delayedFlights = ("DelValArr", lambda x: (x == "late").sum()),   
+    delayTotal = ("DelTotArr", "sum"),
+    stnHndlTotal = ("StnHndlDelayArr", "sum"),
+    damAcTotal = ("damAcArr", "sum"),
+    techTotal = ("techArr", "sum"),
+    systTotal = ("systArr", "sum"),
+    flopsTotal = ("flopsArr", "sum"),
+    weatherTotal = ("weatherArr", "sum"),
+    airportTotal = ("airportArr", "sum"),
+    miscTotal = ("miscArr", "sum"),
+    ctrlTotal = ("controlArr", "sum"),
+    unctrlTotal = ("uncontrolArr", "sum")
+).reset_index()
+
+delCatNum11["stnHandlPerc"] = round((delCatNum11["stnHndlTotal"] / delCatNum11["delayTotal"]) * (delCatNum11["delayedFlights"] / delCatNum11["fltTotal"]) * 100, 2)
+delCatNum11["damAcPerc"] = round((delCatNum11["damAcTotal"] / delCatNum11["delayTotal"]) * (delCatNum11["delayedFlights"] / delCatNum11["fltTotal"]) * 100, 2)
+delCatNum11["techPerc"] = round((delCatNum11["techTotal"] / delCatNum11["delayTotal"]) * (delCatNum11["delayedFlights"] / delCatNum11["fltTotal"]) * 100, 2)
+delCatNum11["systPerc"] = round((delCatNum11["systTotal"] / delCatNum11["delayTotal"]) * (delCatNum11["delayedFlights"] / delCatNum11["fltTotal"]) * 100, 2)
+delCatNum11["flopsPerc"] = round((delCatNum11["flopsTotal"] / delCatNum11["delayTotal"]) * (delCatNum11["delayedFlights"] / delCatNum11["fltTotal"]) * 100, 2)
+delCatNum11["weatherPerc"] = round((delCatNum11["weatherTotal"] / delCatNum11["delayTotal"]) * (delCatNum11["delayedFlights"] / delCatNum11["fltTotal"]) * 100, 2)
+delCatNum11["airportPerc"] = round((delCatNum11["airportTotal"] / delCatNum11["delayTotal"]) * (delCatNum11["delayedFlights"] / delCatNum11["fltTotal"]) * 100, 2)
+delCatNum11["miscPerc"] = round((delCatNum11["miscTotal"] / delCatNum11["delayTotal"]) * (delCatNum11["delayedFlights"] / delCatNum11["fltTotal"]) * 100, 2)
+delCatNum11["ctrlPerc"] = round((delCatNum11["ctrlTotal"] / delCatNum11["delayTotal"]) * (delCatNum11["delayedFlights"] / delCatNum11["fltTotal"]) * 100, 2)
+delCatNum11["unctrlPerc"] = round((delCatNum11["unctrlTotal"] / delCatNum11["delayTotal"]) * (delCatNum11["delayedFlights"] / delCatNum11["fltTotal"]) * 100, 2)
+
+delCatNum12 = df2.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME","CLASS_stnArr","ICAO_stnArr","station_townArr"]).agg(
+    fltTotal = ("FVal", lambda x: (x == "val").sum()),
+    delRange1630 = ("DelRangeArr", lambda x: (x == "00:16 - 00:30").sum()),
+    delRange3159 = ("DelRangeArr", lambda x: (x == "00:31 - 00:59").sum()),
+    delRange0100 = ("DelRangeArr", lambda x: (x == "01:00 - 01:59").sum()),
+    delRange0200 = ("DelRangeArr", lambda x: (x == "02:00 - 03:59").sum()),
+    delRange0400 = ("DelRangeArr", lambda x: (x == "> 04:00").sum())
+).reset_index()
+
+delCatNum12["1630perc"] = round((delCatNum12["delRange1630"] / delCatNum12["fltTotal"]) * 100, 2)
+delCatNum12["3159perc"] = round((delCatNum12["delRange3159"] / delCatNum12["fltTotal"]) * 100, 2)
+delCatNum12["0100perc"] = round((delCatNum12["delRange0100"] / delCatNum12["fltTotal"]) * 100, 2)
+delCatNum12["0200perc"] = round((delCatNum12["delRange0200"] / delCatNum12["fltTotal"]) * 100, 2)
+delCatNum12["0400perc"] = round((delCatNum12["delRange0400"] / delCatNum12["fltTotal"]) * 100, 2)
+delCatNum12["otp"] = round(100 - delCatNum12["1630perc"] - delCatNum12["3159perc"] - delCatNum12["0100perc"] - delCatNum12["0200perc"] - delCatNum12["0400perc"], 2)
+
+delCatNum13 = df2.groupby(["DATE","CLASS_stnArr","ICAO_stnArr","station_townArr"]).agg(
+    fltTotal = ("FVal", lambda x: (x == "val").sum()),
+    delRange1630 = ("DelRange", lambda x: (x == "00:16 - 00:30").sum()),
+    delRange3159 = ("DelRange", lambda x: (x == "00:31 - 00:59").sum()),
+    delRange0100 = ("DelRange", lambda x: (x == "01:00 - 01:59").sum()),
+    delRange0200 = ("DelRange", lambda x: (x == "02:00 - 03:59").sum()),
+    delRange0400 = ("DelRange", lambda x: (x == "> 04:00").sum())
+).reset_index()
+
+delCatNum13["delRange1630Perc"] = round((delCatNum13["delRange1630"] / delCatNum13["fltTotal"]) * 100, 2)
+delCatNum13["delRange3159Perc"] = round((delCatNum13["delRange3159"] / delCatNum13["fltTotal"]) * 100, 2)
+delCatNum13["delRange0100Perc"] = round((delCatNum13["delRange0100"] / delCatNum13["fltTotal"]) * 100, 2)
+delCatNum13["delRange0200Perc"] = round((delCatNum13["delRange0200"] / delCatNum13["fltTotal"]) * 100, 2)
+delCatNum13["delRange0400Perc"] = round((delCatNum13["delRange0400"] / delCatNum13["fltTotal"]) * 100, 2)
+delCatNum13["otp"] = round(100 - (delCatNum13["delRange1630Perc"] + delCatNum13["delRange3159Perc"] + delCatNum13["delRange0100Perc"] + delCatNum13["delRange0200Perc"] + delCatNum13["delRange0400Perc"]), 2)
+
 save_path = os.path.join(output_folder, "otp_per_date_output.csv")
 otpPerDate.to_csv(save_path, sep=";", index=False)
 
@@ -410,3 +620,21 @@ df2.to_csv(save_path9, sep=";", index=False)
 
 save_path10 = os.path.join(output_folder, "delay_per_cat_per_time.csv")
 delCatNum9.to_csv(save_path10, sep=";", index=False)
+
+save_path11 = os.path.join(output_folder, "otp_arr_per_date_output.csv")
+otpArrPerDate.to_csv(save_path11, sep=";", index=False)
+
+save_path12 = os.path.join(output_folder, "otp_arr_per_month_output.csv")
+otpArrPerMonth.to_csv(save_path12, sep=";", index=False)
+
+save_path13 = os.path.join(output_folder, "delay_category_arrival_output.csv")
+delCatNum10.to_csv(save_path13, sep=";", index=False)
+
+save_path14 = os.path.join(output_folder, "delay_category_arrival_per_month_output.csv")
+delCatNum11.to_csv(save_path14, sep=";", index=False)
+
+save_path15 = os.path.join(output_folder, "otp_arr_per_station_per_month.csv")
+delCatNum12.to_csv(save_path15, sep=";", index=False)
+
+save_path16 = os.path.join(output_folder, "otp_arr_per_station_per_date.csv")
+delCatNum13.to_csv(save_path16, sep=";", index=False)

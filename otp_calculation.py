@@ -2,10 +2,10 @@ import pandas as pd
 import numpy as np
 import os
 
-# 1. Get the folder where otp_calculation.py is actually located
+# Get the folder where otp_calculation.py is actually located
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# 2. Build the path to the CSV file correctly
+# Build the path to the CSV file correctly
 file_path = os.path.join(script_dir, "input", "otp_pandas_try.csv")
 file_path2 = os.path.join(script_dir, "input", "delco_data_try.csv")
 file_path3 = os.path.join(script_dir, "input", "station_db.csv")
@@ -13,14 +13,15 @@ output_folder = os.path.join(script_dir, "output")
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
-# 3. Now read it
+# Now read it
 df = pd.read_csv(file_path, sep=";", dtype={14: str, 17: str, 20: str, 26: str, 13: str, 25: str})
 
-# 2. Check if it exists, if not, create it!
+# Check if it exists, if not, create it!
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
     print(f"Created missing directory: {output_folder}")
 
+# Start with data cleansing and data formatting
 df["DATE"] = pd.to_datetime(df["DATE"], format="%d/%m/%Y", errors="coerce")
 df["MONTH_NUMBER"] = df["DATE"].dt.month
 df["MONTH_NAME"] = df["DATE"].dt.month_name()
@@ -87,6 +88,7 @@ df["C1Arr"] = df["C1Arr"].astype(str)
 df["C2Arr"] = np.where(df["Sub2Arr"] != "0", df["C2Arr"] + df["Sub2Arr"], df["C2Arr"])
 df["C2Arr"] = df["C2Arr"].astype(str)
 
+# Validating for counted flight and delayed flight logic
 FValCond = ((df["TYPE"] == "J") | (df["TYPE"] == "G")) & (df["ST"] == "0")
 df["FVal"] = np.where(FValCond, "val", "not_count")
 
@@ -100,6 +102,7 @@ onTime = df["DelTotDep"] <= 15
 df["DelVal"] = np.where((df["FVal"] == "val") & Dly, "late",
                         np.where((df["FVal"] == "val") & onTime, "on_time", "0"))
 
+# Filtering for every delay category by length & delay code assignment logic
 df["DelRange"] = np.where(((df["DelTotDep"] > 15) & (df["DelTotDep"] <= 30)) & (df["FVal"] == "val") & (df["DelVal"] == "late"), "00:16 - 00:30", 
                         np.where(((df["DelTotDep"] > 30) & (df["DelTotDep"] < 60)) & (df["FVal"] == "val") & (df["DelVal"] == "late"), "00:31 - 00:59",
                         np.where(((df["DelTotDep"] >= 60) & (df["DelTotDep"] < 120)) & (df["FVal"] == "val") & (df["DelVal"] == "late"), "01:00 - 01:59",
@@ -116,12 +119,14 @@ df["DlyCodeAsgn"] = np.where((df["FVal"] == "val") & (df["DelVal"] == "late") & 
                             np.where((df["FVal"] == "val") & (df["DelVal"] == "late") & (DlyMax == df["DLY1"]) & (DlyMax == df["DLY2"]) & (DlyMax == df["DLY3"]) & (DlyMax == df["DLY4"]), df["C1"], 
                             np.where((df["FVal"] == "val") & (df["DelVal"] == "on_time"), 3, 0))))))))
 
+# Validating delay arrival flight logic
 df["DelTotArr"] = np.where((df["FVal"] == "val") & ((df["DLY1Arr"] + df["DLY2Arr"]) > 15), df["DLY1Arr"] + df["DLY2Arr"], 0)
 DlyArr = df["DelTotArr"] > 15
 onTimeArr = df["DelTotArr"] <= 15
 df["DelValArr"] = np.where((df["FVal"] == "val") & DlyArr, "late",
                         np.where((df["FVal"] == "val") & onTimeArr, "on_time", "0"))
 
+# Filtering for every delay category arrival by length & delay code assignment logic
 df["DelRangeArr"] = np.where(((df["DelTotArr"] > 15) & (df["DelTotArr"] <= 30)) & (df["FVal"] == "val") & (df["DelValArr"] == "late"), "00:16 - 00:30", 
                         np.where(((df["DelTotArr"] > 30) & (df["DelTotArr"] < 60)) & (df["FVal"] == "val") & (df["DelValArr"] == "late"), "00:31 - 00:59",
                         np.where(((df["DelTotArr"] >= 60) & (df["DelTotArr"] < 120)) & (df["FVal"] == "val") & (df["DelValArr"] == "late"), "01:00 - 01:59",
@@ -137,6 +142,7 @@ df["DlyCodeAsgnArr"] = np.where((df["FVal"] == "val") & (df["DelValArr"] == "lat
 dc = pd.read_csv(file_path2, sep=";")
 st = pd.read_csv(file_path3, sep=";")
 
+# Converting fields that will be used to merge table
 df["DlyCodeAsgn"] = df["DlyCodeAsgn"].astype(str)
 df["DlyCodeAsgnArr"] = df["DlyCodeAsgnArr"].astype(str)
 df["C1"] = df["C1"].astype(str)
@@ -148,9 +154,11 @@ df["C2Arr"] = df["C2Arr"].astype(str)
 df["stationVal"] = df["stationVal"].astype(str)
 df["stationValArr"] = df["stationValArr"].astype(str)
 
+# Reading the input file to be merged into Daily Flight Schedule table
 dc_small = dc[["DlyCodeAsgn", "DlyCat", "DlyCat2"]].astype(str)
 st_small = st[["STATION","ICAO","CLASS","TOWN"]].astype(str)
 
+# Merge the table for Departure OTP Fields
 df2 = pd.merge(df, dc_small, how="left", on="DlyCodeAsgn", suffixes=("", "_main")).drop(columns="DlyCodeAsgn_main", errors='ignore')
 df2 = pd.merge(df2, st_small, how="left", left_on="stationVal", right_on="STATION", suffixes=("","_stn")).drop(columns="stn_main", errors='ignore')
 df2 = pd.merge(df2, dc_small, how="left", left_on="C1", right_on="DlyCodeAsgn", suffixes=("", "_c1")).drop(columns="DlyCodeAsgn_c1", errors='ignore')
@@ -174,6 +182,7 @@ df2 = df2.rename(columns={
     "StationCode2": "StationClass"
 })
 
+# Merge the table for Arrival OTP Fields
 df2 = pd.merge(df2, dc_small, how="left", left_on="DlyCodeAsgnArr", right_on="DlyCodeAsgn", suffixes=("", "_mainArr")).drop(columns="DlyCodeAsgn_mainArr", errors='ignore')
 df2 = pd.merge(df2, st_small, how="left", left_on="stationValArr", right_on="STATION", suffixes=("","_stnArr")).drop(columns="stn_mainArr", errors='ignore')
 df2 = pd.merge(df2, dc_small, how="left", left_on="C1Arr", right_on="DlyCodeAsgn", suffixes=("", "_c1Arr")).drop(columns="DlyCodeAsgn_c1Arr", errors='ignore')
@@ -188,6 +197,7 @@ df2 = df2.rename(columns={
     "DlyCat2_c2Arr": "C2Arr_Cat2"
 })
 
+# Composing cause of delay fields that will be used for percentage in aggregate tables
 flt_valid = df2["FVal"] == "val"
 dly_valid = df2["DelVal"] == "late"
 dlyArr_valid = df2["DelValArr"] == "late"
@@ -295,6 +305,7 @@ df2["uncontrolArr"] = uncontrolArr1 + uncontrolArr2
 df2["station_town"] = np.where(flt_valid, df2["STATION"] + " - " + df2["TOWN"],0)
 df2["station_townArr"] = np.where(flt_valid, df2["STATION_stnArr"] + " - " + df2["TOWN_stnArr"],0)
 
+# Aggregation for the composed table
 otpPerDate = df.groupby(["DATE"]).agg(
     flightPerDate = ("FVal", lambda x: (x == "val").sum()),
     onTimePerDate = ("DelVal", lambda x: (x == "on_time").sum()),
@@ -591,6 +602,7 @@ delCatNum13["delRange0200Perc"] = round((delCatNum13["delRange0200"] / delCatNum
 delCatNum13["delRange0400Perc"] = round((delCatNum13["delRange0400"] / delCatNum13["fltTotal"]) * 100, 2)
 delCatNum13["otp"] = round(100 - (delCatNum13["delRange1630Perc"] + delCatNum13["delRange3159Perc"] + delCatNum13["delRange0100Perc"] + delCatNum13["delRange0200Perc"] + delCatNum13["delRange0400Perc"]), 2)
 
+# Generating output file from aggregated table to CSV files
 save_path = os.path.join(output_folder, "otp_per_date_output.csv")
 otpPerDate.to_csv(save_path, sep=";", index=False)
 

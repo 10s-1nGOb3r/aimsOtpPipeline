@@ -312,6 +312,8 @@ otpPerDate = df.groupby(["DATE"]).agg(
     latePerDate = ("DelVal", lambda x: (x == "late").sum())
 ).reset_index()
 
+otpPerDate["onTimePerDate"] = otpPerDate["onTimePerDate"].astype(int)
+otpPerDate["flightPerDate"] = otpPerDate["flightPerDate"].astype(int)
 otpPerDate["OTP_Percentage"] = round((otpPerDate["onTimePerDate"] / otpPerDate["flightPerDate"]) * 100 ,2)
 
 otpArrPerDate = df.groupby(["DATE"]).agg(
@@ -320,6 +322,8 @@ otpArrPerDate = df.groupby(["DATE"]).agg(
     latePerDate = ("DelValArr", lambda x: (x == "late").sum())
 ).reset_index()
 
+otpArrPerDate["onTimePerDate"] = otpArrPerDate["onTimePerDate"].astype(int)
+otpArrPerDate["flightPerDate"] = otpArrPerDate["flightPerDate"].astype(int)
 otpArrPerDate["OTP_PercentageArr"] = round((otpArrPerDate["onTimePerDate"] / otpArrPerDate["flightPerDate"]) * 100 ,2)
 
 otpPerMonth = df.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME"]).agg(
@@ -328,6 +332,8 @@ otpPerMonth = df.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME"]).agg(
     latePerMonth = ("DelVal", lambda x: (x == "late").sum())
 ).reset_index()
 
+otpPerMonth["onTimePerMonth"] = otpPerMonth["onTimePerMonth"].astype(int)
+otpPerMonth["flightPerMonth"] = otpPerMonth["flightPerMonth"].astype(int)
 otpPerMonth["OTP_Percentage"] = round((otpPerMonth["onTimePerMonth"] / otpPerMonth["flightPerMonth"]) * 100 ,2)
 
 otpArrPerMonth = df.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME"]).agg(
@@ -336,6 +342,8 @@ otpArrPerMonth = df.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME"]).agg(
     latePerMonth = ("DelValArr", lambda x: (x == "late").sum())
 ).reset_index()
 
+otpArrPerMonth["onTimePerMonth"] = otpArrPerMonth["onTimePerMonth"].astype(int)
+otpArrPerMonth["flightPerMonth"] = otpArrPerMonth["flightPerMonth"].astype(int)
 otpArrPerMonth["OTP_Percentage"] = round((otpArrPerMonth["onTimePerMonth"] / otpArrPerMonth["flightPerMonth"]) * 100 ,2)
 
 delCatNum = df2.groupby("DATE").agg(
@@ -411,6 +419,43 @@ delCatNum2["airportPerc"] = round((delCatNum2["airportTotal"] / delCatNum2["dela
 delCatNum2["miscPerc"] = round((delCatNum2["miscTotal"] / delCatNum2["delayTotal"]) * (delCatNum2["delayedFlights"] / delCatNum2["fltTotal"]) * 100, 2)
 delCatNum2["ctrlPerc"] = round((delCatNum2["ctrlTotal"] / delCatNum2["delayTotal"]) * (delCatNum2["delayedFlights"] / delCatNum2["fltTotal"]) * 100, 2)
 delCatNum2["unctrlPerc"] = round((delCatNum2["unctrlTotal"] / delCatNum2["delayTotal"]) * (delCatNum2["delayedFlights"] / delCatNum2["fltTotal"]) * 100, 2)
+
+delCatNum14 = df2.groupby(["YEAR"]).agg(
+    stnhndlCount = ("Main_Cat1", lambda x: (x == "STATION HANDLING").sum()),
+    damAcCount = ("Main_Cat1", lambda x: (x == "DAMAGE TO AIRCRAFT").sum()),
+    techCount = ("Main_Cat1", lambda x: (x == "TECHNICAL").sum()),
+    systCount = ("Main_Cat1", lambda x: (x == "SYSTEM").sum()),
+    flopsCount = ("Main_Cat1", lambda x: (x == "FLIGHT OPERATIONS & CREW").sum()),
+    weatherCount = ("Main_Cat1", lambda x: (x == "WEATHER").sum()),
+    airportCount = ("Main_Cat1", lambda x: (x == "AIRPORT FACILITIES").sum()),
+    miscCount = ("Main_Cat1", lambda x: (x == "MISCELLANEOUS").sum()),
+    controlCount = ("Main_Cat2", lambda x: (x == "CONTROLLABLE").sum()),
+    uncontrolCount = ("Main_Cat2", lambda x: (x == "UNCONTROLLABLE").sum()),
+    fltTotal = ("FVal", lambda x: (x == "val").sum()),
+    delayedFlights = ("DelVal", lambda x: (x == "late").sum()),   
+    delayTotal = ("DelTotDep", "sum"),
+    stnHndlTotal = ("StnHndlDelay", "sum"),
+    damAcTotal = ("DamAcDelay", "sum"),
+    techTotal = ("TechDelay", "sum"),
+    systTotal = ("SystDelay", "sum"),
+    flopsTotal = ("FlopsDelay", "sum"),
+    weatherTotal = ("WeatherDelay", "sum"),
+    airportTotal = ("AirportDelay", "sum"),
+    miscTotal = ("MiscDelay", "sum"),
+    ctrlTotal = ("ControlDelay", "sum"),
+    unctrlTotal = ("UncontrolDelay", "sum")
+).reset_index()
+
+delCatNum14["stnHandlPerc"] = round((delCatNum14["stnHndlTotal"] / delCatNum14["delayTotal"]) * (delCatNum14["delayedFlights"] / delCatNum14["fltTotal"]) * 100, 2)
+delCatNum14["damAcPerc"] = round((delCatNum14["damAcTotal"] / delCatNum14["delayTotal"]) * (delCatNum14["delayedFlights"] / delCatNum14["fltTotal"]) * 100, 2)
+delCatNum14["techPerc"] = round((delCatNum14["techTotal"] / delCatNum14["delayTotal"]) * (delCatNum14["delayedFlights"] / delCatNum14["fltTotal"]) * 100, 2)
+delCatNum14["systPerc"] = round((delCatNum14["systTotal"] / delCatNum14["delayTotal"]) * (delCatNum14["delayedFlights"] / delCatNum14["fltTotal"]) * 100, 2)
+delCatNum14["flopsPerc"] = round((delCatNum14["flopsTotal"] / delCatNum14["delayTotal"]) * (delCatNum14["delayedFlights"] / delCatNum14["fltTotal"]) * 100, 2)
+delCatNum14["weatherPerc"] = round((delCatNum14["weatherTotal"] / delCatNum14["delayTotal"]) * (delCatNum14["delayedFlights"] / delCatNum14["fltTotal"]) * 100, 2)
+delCatNum14["airportPerc"] = round((delCatNum14["airportTotal"] / delCatNum14["delayTotal"]) * (delCatNum14["delayedFlights"] / delCatNum14["fltTotal"]) * 100, 2)
+delCatNum14["miscPerc"] = round((delCatNum14["miscTotal"] / delCatNum14["delayTotal"]) * (delCatNum14["delayedFlights"] / delCatNum14["fltTotal"]) * 100, 2)
+delCatNum14["ctrlPerc"] = round((delCatNum14["ctrlTotal"] / delCatNum14["delayTotal"]) * (delCatNum14["delayedFlights"] / delCatNum14["fltTotal"]) * 100, 2)
+delCatNum14["unctrlPerc"] = round((delCatNum14["unctrlTotal"] / delCatNum14["delayTotal"]) * (delCatNum14["delayedFlights"] / delCatNum14["fltTotal"]) * 100, 2)
 
 delCatNum3 = df2.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME","CLASS","ICAO","station_town"]).agg(
     fltTotal = ("FVal", lambda x: (x == "val").sum()),
@@ -650,3 +695,6 @@ delCatNum12.to_csv(save_path15, sep=";", index=False)
 
 save_path16 = os.path.join(output_folder, "otp_arr_per_station_per_date.csv")
 delCatNum13.to_csv(save_path16, sep=";", index=False)
+
+save_path17 = os.path.join(output_folder, "delay_category_per_year_output.csv")
+delCatNum14.to_csv(save_path17, sep=";", index=False)

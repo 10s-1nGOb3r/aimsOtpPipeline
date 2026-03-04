@@ -647,6 +647,10 @@ delCatNum13["delRange0200Perc"] = round((delCatNum13["delRange0200"] / delCatNum
 delCatNum13["delRange0400Perc"] = round((delCatNum13["delRange0400"] / delCatNum13["fltTotal"]) * 100, 2)
 delCatNum13["otp"] = round(100 - (delCatNum13["delRange1630Perc"] + delCatNum13["delRange3159Perc"] + delCatNum13["delRange0100Perc"] + delCatNum13["delRange0200Perc"] + delCatNum13["delRange0400Perc"]), 2)
 
+delCatNum15 = df2.groupby(["YEAR","MONTH_NUMBER","MONTH_NAME","Main_Cat1","DlyCodeAsgn"]).agg(
+    totalDelayAssigned = ("DlyCodeAsgn", "count")
+).reset_index()
+
 # Generating output file from aggregated table to CSV files
 save_path = os.path.join(output_folder, "otp_per_date_output.csv")
 otpPerDate.to_csv(save_path, sep=";", index=False)
@@ -698,3 +702,6 @@ delCatNum13.to_csv(save_path16, sep=";", index=False)
 
 save_path17 = os.path.join(output_folder, "delay_category_per_year_output.csv")
 delCatNum14.to_csv(save_path17, sep=";", index=False)
+
+save_path18 = os.path.join(output_folder, "assigned_delay_code_per_month.csv")
+delCatNum15.to_csv(save_path18, sep=";", index=False)
